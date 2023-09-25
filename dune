@@ -1,0 +1,4 @@
+(executable
+  (name extract_bnf)
+  (libraries menhirLib menhirSdk)
+)
