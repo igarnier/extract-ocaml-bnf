@@ -5,11 +5,10 @@ module type C = Cmly_api.GRAMMAR
 
 let grammar =
   match Array.to_list Sys.argv |> List.tl with
-  | [cmly]
-      In_channel.with_open_bin cmly Cmly_read.read_channel
+  | [cmly] -> In_channel.with_open_bin cmly Cmly_read.read_channel
   | _ ->
-    Printf.eprintf "usage: extract_bnf.exe grammar.cmly\n" ;
-    exit 1
+      Printf.eprintf "usage: extract_bnf.exe grammar.cmly\n" ;
+      exit 1
 
 module G = Cmly_read.Lift (struct
   let grammar = grammar
@@ -148,12 +147,20 @@ let normalize = false
 (* [normalize_nonterminal] tries to rename nonterminals to remove parenthesis, etc - useful
    for further conversion to LLama's GBNF format *)
 let normalize_nonterminal term =
-  if not normalize then term
-  else
-    String.split_on_char '(' term
-    |> List.map (fun s -> String.split_on_char ')' s)
-    |> List.flatten |> String.concat "-"
-    |> String.map (function '_' -> '-' | c -> c)
+  let bytes = Bytes.of_string term in
+  let len = Bytes.length bytes in
+  Bytes.to_seq bytes
+  |> Seq.mapi (fun i c ->
+         match c with
+         | '(' -> Some '-'
+         | '_' -> Some '-'
+         | ',' -> Some '-'
+         | ')' ->
+             if i = len - 1 then None
+             else if Bytes.get bytes (i + 1) = ')' then None
+             else Some '-'
+         | c -> Some c)
+  |> Seq.filter_map Fun.id |> String.of_seq
 
 open G
 
